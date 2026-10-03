@@ -1,0 +1,318 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Квиз подбора тура</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Unbounded:wght@500;700&family=Onest:wght@400;500;600&family=JetBrains+Mono:wght@500;700&display=swap">
+<style>
+body{margin:0}img{max-width:100%}[hidden]{display:none!important}
+/* Layout: одна колонка-«посадочный талон», маршрут-прогресс сверху, результат в виде boarding pass */
+:root{
+  --bg:#F5F9F9; --surface:#FFFFFF; --ink:#1C3B3A; --muted:#6A8281; --line:#DCE8E7;
+  --teal:#1A8A84; --teal-soft:#E6F4F2; --coral:#EE6A4F; --coral-ink:#FFFFFF; color-scheme:light;
+  --f-display:"Unbounded",system-ui,sans-serif;
+  --f-body:"Onest",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-mono:"JetBrains Mono",ui-monospace,Menlo,monospace;
+}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:16px;line-height:1.5;padding-inline:16px;padding-block:24px 48px}
+.wrap{max-width:660px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.brand{display:flex;justify-content:space-between;align-items:center;gap:12px;font-size:13px;color:var(--muted)}
+.brand b{font-family:var(--f-display);font-weight:700;color:var(--ink);letter-spacing:.02em}
+.card{background:var(--surface);border:1px solid var(--line);box-shadow:0 12px 40px rgba(26,138,132,.08);border-radius:20px;padding:28px;display:flex;flex-direction:column;gap:20px}
+@media (max-width:480px){.card{padding:20px}}
+
+h1,h2{font-family:var(--f-display);font-weight:700;line-height:1.15;margin:0;text-wrap:balance}
+h1{font-size:clamp(26px,6vw,36px)}
+h2{font-size:clamp(20px,4.6vw,24px)}
+.lead{color:var(--muted);margin:0;max-width:60ch}
+.eyebrow{font-family:var(--f-mono);font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--teal)}
+
+.hero{position:relative;margin:-28px -28px 0;border-radius:19px 19px 0 0;overflow:hidden;aspect-ratio:16/9;max-width:none}
+.hero img{display:block;width:100%;height:100%;object-fit:cover}
+.hero figcaption{position:absolute;left:16px;bottom:14px;font-family:var(--f-mono);font-size:12px;letter-spacing:.1em;text-transform:uppercase;color:#fff;background:rgba(8,30,29,.55);padding:6px 10px;border-radius:999px;backdrop-filter:blur(4px)}
+@media (max-width:480px){.hero{margin:-20px -20px 0;aspect-ratio:4/3}}
+.perks{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0;padding:0;list-style:none}
+.perks li{border-top:2px solid var(--teal);padding-top:10px;font-size:14px;color:var(--muted)}
+.perks b{display:block;color:var(--ink);font-size:15px}
+@media (max-width:520px){.perks{grid-template-columns:1fr}}
+
+/* route progress */
+.route{display:flex;align-items:center;gap:10px;font-family:var(--f-mono);font-size:12px;color:var(--muted)}
+.track{position:relative;flex:1;height:2px;background:repeating-linear-gradient(90deg,var(--line) 0 6px,transparent 6px 10px)}
+.track i{position:absolute;inset:0 auto 0 0;background:var(--teal);transition:width .35s ease}
+.track svg{position:absolute;top:50%;width:18px;height:18px;transform:translate(-50%,-50%);fill:var(--teal);transition:left .35s ease}
+
+.opts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.opts.three{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media (max-width:520px){.opts,.opts.three{grid-template-columns:1fr 1fr}}
+.opt{font:inherit;text-align:left;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:14px;padding:14px;cursor:pointer;display:flex;flex-direction:column;gap:2px;min-width:0;transition:border-color .15s,background .15s}
+.opt:hover{border-color:var(--teal)}
+.opt:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible{outline:3px solid var(--teal);outline-offset:2px}
+.opt b{font-weight:600}
+.opt span{font-size:13px;color:var(--muted)}
+.opt[aria-pressed="true"]{border-color:var(--teal);background:var(--teal-soft)}
+.hint{font-size:13px;color:var(--muted);margin:-8px 0 0}
+
+.counter{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.counter small{display:block;color:var(--muted)}
+.step{display:flex;align-items:center;gap:14px;font-family:var(--f-mono);font-size:18px;font-variant-numeric:tabular-nums}
+.step button{width:40px;height:40px;border-radius:50%;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);font-size:20px;cursor:pointer}
+.step button:hover{border-color:var(--teal)}
+
+.nav{display:flex;justify-content:space-between;gap:12px;align-items:center}
+.btn{font:600 16px var(--f-body);border:0;border-radius:999px;padding:14px 26px;cursor:pointer;background:var(--coral);color:var(--coral-ink)}
+.btn[disabled]{opacity:.4;cursor:not-allowed}
+.btn.ghost{background:transparent;color:var(--muted);padding-inline:4px}
+
+form{display:flex;flex-direction:column;gap:14px}
+label.f{display:flex;flex-direction:column;gap:6px;font-size:14px;color:var(--muted)}
+input[type=text],input[type=tel],select{font:inherit;color:var(--ink);background:var(--surface);border:1.5px solid var(--line);border-radius:12px;padding:12px 14px;width:100%}
+.check{display:flex;gap:10px;align-items:flex-start;font-size:13px;color:var(--muted)}
+.check input{margin-top:3px;accent-color:var(--teal)}
+.err{color:var(--coral);font-size:13px;min-height:1em;margin:0}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <div class="brand"><b id="agency">Ваше турагентство</b><span>Подбор тура · 1 минута</span></div>
+  <main class="card" id="app" aria-live="polite"></main>
+</div>
+
+<script>
+/* ===== Настройки ===== */
+const CONFIG = {
+  agencyName: "Ваше турагентство",
+  // URL веб-приложения Google Apps Script (см. apps-script.gs): пишет заявку в таблицу и шлёт в Telegram.
+  // Пусто — заявка только выводится в консоль.
+  webhookUrl: "",
+  managerReplyTime: "15 минут",
+  currency: "$"
+};
+
+/* ===== Направления: код аэропорта, сезон (месяцы), тип отдыха, цена на 1 чел. за 7 ночей с перелётом, $ ===== */
+const DEST = [
+  {code:"HRG",name:"Египет, Хургада",        types:["beach","exotic"],          months:[1,2,3,4,5,10,11,12], cost:700,  kids:1, note:"Тёплое море зимой, коралловые рифы, всё включено"},
+  {code:"DXB",name:"ОАЭ, Дубай",             types:["city","beach"],            months:[1,2,3,4,10,11,12],   cost:900,  kids:1, note:"Пляжи, шопинг, аквапарки"},
+  {code:"CXR",name:"Вьетнам, Нячанг",        types:["exotic","beach"],          months:[2,3,4,5,6,7,8],      cost:1000, kids:1, note:"Длинные песчаные пляжи, недорогая еда"},
+  {code:"HAK",name:"Китай, Хайнань",         types:["beach","exotic","tours"],  months:[1,2,3,4,10,11,12],   cost:1000, kids:1, note:"Тропический остров, отели мировых сетей"},
+  {code:"KUL",name:"Малайзия",               types:["city","exotic","beach","tours"], months:[1,2,3,4,6,7,8,12], cost:1100, kids:1, note:"Куала-Лумпур и острова Лангкави, Пенанг"},
+  {code:"CMB",name:"Шри-Ланка",              types:["exotic","tours","active"], months:[1,2,3,4,12],         cost:1100, kids:0, note:"Чайные плантации, сафари, сёрфинг"},
+  {code:"DPS",name:"Индонезия, Бали",        types:["exotic","active"],         months:[5,6,7,8,9,10],       cost:1300, kids:0, note:"Сёрфинг, рисовые террасы, храмы"},
+  {code:"MLE",name:"Мальдивы",               types:["exotic","beach"],          months:[1,2,3,4,11,12],      cost:2500, kids:0, note:"Виллы над водой, уединение"}
+];
+
+const MONTHS = ["Январь","Февраль","Март","Апрель","Май","Июнь","Июль","Август","Сентябрь","Октябрь","Ноябрь","Декабрь"];
+const now = new Date();
+const monthOpts = Array.from({length:6},(_,i)=>{const m=(now.getMonth()+i)%12;return {v:m+1,t:MONTHS[m],s:i===0?"в этом месяце":""}});
+
+/* ===== Вопросы ===== */
+const Q = [
+  {id:"type",multi:true,title:"Какой отдых вам ближе?",hint:"Можно выбрать несколько",opts:[
+    {v:"beach",t:"Пляж и море",s:"лежать, плавать, загорать"},
+    {v:"exotic",t:"Экзотика",s:"тропики, новые вкусы"},
+    {v:"tours",t:"Экскурсии",s:"города, история, гастрономия"},
+    {v:"active",t:"Активный отдых",s:"горы, треккинг, сёрфинг"},
+    {v:"city",t:"Шопинг и город",s:"магазины, рестораны, шоу"},
+    {v:"any",t:"Пока не знаю",s:"помогите определиться"}]},
+  {id:"countries",multi:true,title:"Куда хотите поехать?",hint:"Можно выбрать несколько",cls:"three",opts:[
+    {v:"DXB",t:"ОАЭ"},{v:"HRG",t:"Египет"},{v:"CXR",t:"Вьетнам"},{v:"HAK",t:"Китай"},
+    {v:"MLE",t:"Мальдивы"},{v:"KUL",t:"Малайзия"},{v:"DPS",t:"Индонезия"},{v:"CMB",t:"Шри-Ланка"},
+    {v:"any",t:"Пока не знаю",s:"помогите выбрать"}]},
+  {id:"who",title:"Кто едет?",opts:[
+    {v:"solo",t:"Один / одна"},{v:"couple",t:"Вдвоём",s:"пара или с другом"},
+    {v:"family",t:"Семья с детьми"},{v:"group",t:"Компания",s:"3 взрослых и больше"}]},
+  {id:"pax",type:"pax",title:"Сколько человек поедет?"},
+  {id:"month",multi:true,title:"Когда хотите поехать?",hint:"Отметьте подходящие месяцы",cls:"three",opts:[...monthOpts,{v:0,t:"Даты гибкие",s:"подберём по цене"}]},
+  {id:"nights",title:"На сколько ночей?",opts:[
+    {v:4,t:"3–5 ночей",s:"короткий отпуск"},{v:7,t:"6–8 ночей",s:"классическая неделя"},
+    {v:10,t:"9–12 ночей"},{v:14,t:"13 ночей и больше"}]},
+  {id:"budget",title:"Какой бюджет на всех?",hint:"С перелётом и проживанием",opts:[
+    {v:1000,t:"До $1 500"},{v:2250,t:"$1 500–3 000"},{v:4000,t:"$3 000–5 000"},
+    {v:6500,t:"$5 000–8 000"},{v:10000,t:"Больше $8 000"},{v:0,t:"Ещё не решили"}]},
+  {id:"hotel",multi:true,title:"Что важно в отеле?",hint:"Можно выбрать несколько",opts:[
+    {v:"ai",t:"Всё включено"},{v:"line1",t:"Первая линия"},{v:"sand",t:"Песчаный пляж"},
+    {v:"kids",t:"Детский клуб и анимация"},{v:"adults",t:"Отель только для взрослых"},
+    {v:"spa",t:"SPA и бассейны"},{v:"stars5",t:"Только 5 звёзд"},{v:"cheap",t:"Главное — недорого"}]}
+];
+
+/* ===== Состояние ===== */
+const S = {step:-1, a:{type:[],countries:[],month:[],hotel:[],pax:{adults:2,kids:0}}};
+const app = document.getElementById("app");
+document.getElementById("agency").textContent = CONFIG.agencyName;
+const TOTAL = Q.length + 1;
+const plane = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z" transform="rotate(90 12 12)"/></svg>';
+const esc = s => String(s).replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function route(){
+  const p = Math.round((S.step)/(TOTAL)*100);
+  return `<div class="route"><span>${String(S.step+1).padStart(2,"0")}/${TOTAL}</span>
+    <div class="track"><i style="width:${p}%"></i><span style="position:absolute;left:${p}%;top:0">${plane}</span></div><span>ТУР</span></div>`;
+}
+
+function render(){
+  if(S.step<0) return renderStart();
+  if(S.step>=Q.length) return renderContacts();
+  const q = Q[S.step];
+  let body = "";
+  if(q.type==="pax"){
+    const {adults,kids}=S.a.pax;
+    body = `<div>
+      <div class="counter"><div>Взрослые<small>от 12 лет</small></div><div class="step"><button type="button" data-pax="adults:-1" aria-label="Меньше взрослых">−</button><span>${adults}</span><button type="button" data-pax="adults:1" aria-label="Больше взрослых">+</button></div></div>
+      <div class="counter"><div>Дети<small>до 12 лет</small></div><div class="step"><button type="button" data-pax="kids:-1" aria-label="Меньше детей">−</button><span>${kids}</span><button type="button" data-pax="kids:1" aria-label="Больше детей">+</button></div></div></div>`;
+  } else {
+    const cur = S.a[q.id];
+    body = `<div class="opts ${q.cls||""}">${q.opts.map(o=>{
+      const on = q.multi ? cur.includes(o.v) : cur===o.v;
+      return `<button type="button" class="opt" data-v="${esc(o.v)}" aria-pressed="${on}"><b>${esc(o.t)}</b>${o.s?`<span>${esc(o.s)}</span>`:""}</button>`}).join("")}</div>`;
+  }
+  const ok = canNext(q);
+  app.innerHTML = `${route()}<h2>${q.title}</h2>${q.hint?`<p class="hint">${q.hint}</p>`:""}${body}
+    <div class="nav"><button type="button" class="btn ghost" id="back">← Назад</button>
+    <button type="button" class="btn" id="next" ${ok?"":"disabled"}>${q.optional&&!S.a[q.id].length?"Пропустить":"Далее"}</button></div>`;
+}
+
+function canNext(q){
+  if(q.optional||q.type) return true;
+  const v=S.a[q.id];
+  return q.multi ? v.length>0 : v!==undefined;
+}
+
+function renderStart(){
+  app.innerHTML = `<figure class="hero"><img src="vietnam.jpg" alt="Залив Халонг во Вьетнаме: известняковые скалы и джонка под парусами"><figcaption>Вьетнам · залив Халонг</figcaption></figure>
+    <span class="eyebrow">Ответьте на ${Q.length} вопросов</span>
+    <h1>Подберём тур, который подойдёт именно вам</h1>
+    <p class="lead">Расскажите, как хотите отдохнуть, — покажем подходящие направления, а менеджер пришлёт 3–5 вариантов с ценами за ${CONFIG.managerReplyTime}.</p>
+    <ul class="perks">
+      <li><b>1 минута</b>на ответы</li>
+      <li><b>3–5 туров</b>с актуальными ценами</li>
+      <li><b>Бесплатно</b>без навязчивых звонков</li>
+    </ul>
+    <div class="nav"><span></span><button type="button" class="btn" id="next">Подобрать тур →</button></div>`;
+}
+
+/* ===== Подбор направлений ===== */
+function recommend(){
+  const a=S.a, people=Math.max(1,a.pax.adults + a.pax.kids*0.6);
+  const nights=a.nights||7, perPerson=a.budget? a.budget/people : 0;
+  return DEST.map(d=>{
+    let s=0;
+    a.type.forEach(t=>{ if(d.types.includes(t)) s+=3; });
+    const months=a.month.filter(m=>m>0);
+    if(months.length){ const hit=months.filter(m=>d.months.includes(m)).length; s+= hit? 2+hit*0.5 : -4; }
+    if(perPerson){ const need=d.cost*nights/7; s+= perPerson>=need?2 : perPerson>=need*0.8?0 : -4; }
+    if(a.who==="family"||a.pax.kids>0) s+= d.kids?2:-2;
+    if(a.who==="couple"&&["MLE","DPS","CMB"].includes(d.code)) s+=1;
+    if(a.hotel.includes("ai")&&["HRG","HAK"].includes(d.code)) s+=1;
+    if(a.hotel.includes("cheap")) s+= d.cost<=900?1:-1;
+    if(a.hotel.includes("stars5")&&d.cost>=1000) s+=1;
+    if(a.countries.includes(d.code)) s+=6;
+    return {...d,score:s};
+  }).sort((x,y)=>y.score-x.score).slice(0,3);
+}
+
+
+
+function renderContacts(){
+  app.innerHTML = `${route()}<span class="eyebrow">Последний шаг</span>
+    <h2>Куда прислать подборку туров?</h2>
+    <p class="lead">Менеджер подберёт 3–5 вариантов с отелями и ценами на ваши даты и пришлёт в течение ${CONFIG.managerReplyTime}.</p>
+    <form id="lead" novalidate>
+      <label class="f">Как к вам обращаться<input type="text" id="name" autocomplete="name" placeholder="Анна"></label>
+      <label class="f">Телефон<input type="tel" id="phone" autocomplete="tel" placeholder="+998 90 123-45-67" inputmode="tel"></label>
+      <label class="f">Куда прислать подборку<select id="channel"><option>Telegram</option><option>WhatsApp</option><option>Позвонить</option></select></label>
+      <label class="check"><input type="checkbox" id="consent" checked> <span>Согласен(а) на обработку персональных данных</span></label>
+      <p class="err" id="err"></p>
+      <div class="nav"><button type="button" class="btn ghost" id="back">← Назад</button><button class="btn" type="submit">Получить подборку</button></div>
+    </form>`;
+}
+
+function renderDone(recs, name){
+  app.innerHTML = `<span class="eyebrow">Заявка принята</span>
+    <h2>${esc(name)}, спасибо!</h2>
+    <p class="lead">Менеджер уже подбирает туры по вашим ответам и свяжется с вами в течение ${CONFIG.managerReplyTime}.</p>
+    <div class="nav"><span></span><button type="button" class="btn ghost" id="restart">Пройти заново</button></div>`;
+}
+
+/* ===== Телефон ===== */
+function formatPhone(v){
+  let d=v.replace(/\D/g,""); if(!d.startsWith("998")) d="998"+d; d=d.slice(0,12);
+  const p=[d.slice(3,5),d.slice(5,8),d.slice(8,10),d.slice(10,12)];
+  return "+998"+(p[0]?" "+p[0]:"")+(p[1]?" "+p[1]:"")+(p[2]?"-"+p[2]:"")+(p[3]?"-"+p[3]:"");
+}
+
+/* ===== Поля заявки (для таблицы и Telegram) ===== */
+function leadFields(recs, lead){
+  const label=(id,v)=>{const q=Q.find(q=>q.id===id);const o=q.opts.find(o=>o.v===v);return o?o.t:v};
+  const a=S.a, utm=Object.fromEntries(new URLSearchParams(location.search));
+  return {
+    name:lead.name, phone:lead.phone, channel:lead.channel,
+    countries:a.countries.map(v=>label("countries",v)).join(", "),
+    type:a.type.map(v=>label("type",v)).join(", "),
+    who:label("who",a.who), adults:a.pax.adults, kids:a.pax.kids,
+    month:a.month.map(v=>label("month",v)).join(", "),
+    nights:label("nights",a.nights), budget:label("budget",a.budget),
+    hotel:a.hotel.map(v=>label("hotel",v)).join(", ")||"—",
+    recommended:recs.map(r=>r.name).join("; "),
+    utm_source:utm.utm_source||"", utm_campaign:utm.utm_campaign||"", utm_content:utm.utm_content||"",
+    page:location.href
+  };
+}
+
+async function submit(e){
+  e.preventDefault();
+  const name=document.getElementById("name").value.trim();
+  const phone=document.getElementById("phone").value;
+  const err=document.getElementById("err");
+  if(!name){err.textContent="Укажите имя, чтобы менеджер знал, как к вам обращаться.";return}
+  if(phone.replace(/\D/g,"").length<12){err.textContent="Введите телефон полностью: +998 и 9 цифр.";return}
+  if(!document.getElementById("consent").checked){err.textContent="Отметьте согласие на обработку данных, чтобы отправить заявку.";return}
+  const recs=recommend();
+  const fields=leadFields(recs,{name,phone,channel:document.getElementById("channel").value});
+  const btn=e.target.querySelector('button[type="submit"]'); btn.disabled=true; btn.textContent="Отправляем…";
+  if(CONFIG.webhookUrl){
+    try{ await fetch(CONFIG.webhookUrl,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(fields)}); }
+    catch(x){ console.warn("Не удалось отправить заявку",x); }
+  } else console.log("Заявка (webhookUrl не задан):",fields);
+  renderDone(recs,name);
+}
+
+/* ===== События ===== */
+app.addEventListener("click",e=>{
+  const t=e.target.closest("button"); if(!t) return;
+  if(t.id==="next"){ S.step++; return render(); }
+  if(t.id==="back"){ S.step--; return render(); }
+  if(t.id==="restart"){ S.step=-1; return render(); }
+  if(t.dataset.pax){
+    const [k,d]=t.dataset.pax.split(":"); const p=S.a.pax;
+    p[k]=Math.min(9,Math.max(k==="adults"?1:0,p[k]+ +d));
+    if(k==="kids"&&p.kids>0&&S.a.who!=="family") S.a.who="family";
+    return render();
+  }
+  if(t.dataset.v!==undefined){
+    const q=Q[S.step]; let v=t.dataset.v; const o=q.opts.find(o=>String(o.v)===v); v=o.v;
+    if(q.multi){
+      const arr=S.a[q.id];
+      const exclusive = v==="any"||v===0;
+      if(exclusive) S.a[q.id]=arr.includes(v)?[]:[v];
+      else { const base=arr.filter(x=>x!=="any"&&x!==0); S.a[q.id]=base.includes(v)?base.filter(x=>x!==v):[...base,v]; }
+      return render();
+    }
+    S.a[q.id]=v;
+    if(q.id==="who"){ const p=S.a.pax; if(v==="solo"){p.adults=1;p.kids=0} if(v==="couple"){p.adults=2;p.kids=0} if(v==="family"&&!p.kids){p.adults=2;p.kids=1} if(v==="group"&&p.adults<3){p.adults=3} }
+    render(); setTimeout(()=>{S.step++;render()},180);
+  }
+});
+app.addEventListener("input",e=>{ if(e.target.id==="phone") e.target.value=formatPhone(e.target.value); });
+app.addEventListener("submit",submit);
+render();
+</script>
+
+</body>
+</html>
