@@ -78,6 +78,23 @@ input[type=text],input[type=tel],select{font:inherit;color:var(--ink);background
 @media (prefers-reduced-motion:reduce){*{transition:none!important}}
 </style>
 
+<!-- Meta Pixel Code -->
+<script>
+!function(f,b,e,v,n,t,s)
+{if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+n.queue=[];t=b.createElement(e);t.async=!0;
+t.src=v;s=b.getElementsByTagName(e)[0];
+s.parentNode.insertBefore(t,s)}(window, document,'script',
+'https://connect.facebook.net/en_US/fbevents.js');
+fbq('init', '2958555391173459');
+fbq('track', 'PageView');
+</script>
+<noscript><img height="1" width="1" style="display:none"
+src="https://www.facebook.com/tr?id=2958555391173459&ev=PageView&noscript=1"
+/></noscript>
+<!-- End Meta Pixel Code -->
 </head>
 <body>
 <div class="wrap">
@@ -275,6 +292,7 @@ async function submit(e){
   if(!document.getElementById("consent").checked){err.textContent="Отметьте согласие на обработку данных, чтобы отправить заявку.";return}
   const recs=recommend();
   const fields=leadFields(recs,{name,phone,channel:document.getElementById("channel").value});
+  track("track","Lead",{content_name:"Квиз подбора тура",content_category:fields.countries||"Не выбрано"});
   const btn=e.target.querySelector('button[type="submit"]'); btn.disabled=true; btn.textContent="Отправляем…";
   if(CONFIG.webhookUrl){
     try{ await fetch(CONFIG.webhookUrl,{method:"POST",mode:"no-cors",headers:{"Content-Type":"text/plain;charset=utf-8"},body:JSON.stringify(fields)}); }
@@ -283,10 +301,13 @@ async function submit(e){
   renderDone(recs,name);
 }
 
+/* ===== Meta Pixel ===== */
+function track(type,name,data){ try{ window.fbq&&window.fbq(type,name,data||{}); }catch(x){} }
+
 /* ===== События ===== */
 app.addEventListener("click",e=>{
   const t=e.target.closest("button"); if(!t) return;
-  if(t.id==="next"){ S.step++; return render(); }
+  if(t.id==="next"){ if(S.step<0) track("trackCustom","QuizStart"); S.step++; return render(); }
   if(t.id==="back"){ S.step--; return render(); }
   if(t.id==="restart"){ S.step=-1; return render(); }
   if(t.dataset.pax){
